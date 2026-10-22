@@ -133,7 +133,7 @@ Create `src-tauri/Info.plist`:
 To launch the app in live development mode:
 
 ```bash
-npm tauri dev
+npm run tauri dev
 
 ```
 
