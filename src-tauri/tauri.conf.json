@@ -16,7 +16,7 @@
         "title": "ghostkey",
         "width": 480,
         "height": 240,
-        "decorations": false,
+        "decorations": true,
         "resizable": true,
         "alwaysOnTop": true,
         "transparent": true,
