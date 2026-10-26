@@ -1,14 +1,7 @@
-use rdev::{listen, Event, EventType};
-use serde::Serialize;
-use std::panic;
+use device_query::{DeviceQuery, DeviceState};
 use std::thread;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
-
-#[derive(Serialize, Clone)]
-struct InputPayload {
-    event_type: String,
-    code: String,
-}
 
 pub fn run() {
     tauri::Builder::default()
@@ -16,55 +9,36 @@ pub fn run() {
             let handle: AppHandle = app.handle().clone();
 
             thread::spawn(move || {
-                // Catch any panic caused by macOS permission denial inside rdev
-                let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    if let Err(error) = listen(move |event: Event| {
-                        match event.event_type {
-                            EventType::KeyPress(key) => {
-                                let _ = handle.emit(
-                                    "ghostkey-input",
-                                    InputPayload {
-                                        event_type: "keydown".into(),
-                                        code: format!("{:?}", key),
-                                    },
-                                );
-                            }
-                            EventType::KeyRelease(key) => {
-                                let _ = handle.emit(
-                                    "ghostkey-input",
-                                    InputPayload {
-                                        event_type: "keyup".into(),
-                                        code: format!("{:?}", key),
-                                    },
-                                );
-                            }
-                            EventType::ButtonPress(button) => {
-                                let _ = handle.emit(
-                                    "ghostkey-input",
-                                    InputPayload {
-                                        event_type: "mousedown".into(),
-                                        code: format!("{:?}", button),
-                                    },
-                                );
-                            }
-                            EventType::ButtonRelease(button) => {
-                                let _ = handle.emit(
-                                    "ghostkey-input",
-                                    InputPayload {
-                                        event_type: "mouseup".into(),
-                                        code: format!("{:?}", button),
-                                    },
-                                );
-                            }
-                            _ => {}
-                        }
-                    }) {
-                        eprintln!("rdev listen error: {:?}", error);
-                    }
-                }));
+                let device_state = DeviceState::new();
+                let mut last_state = String::new();
 
-                if result.is_err() {
-                    eprintln!("GhostKey: Accessibility permission missing. Grant permission in System Settings -> Privacy & Security -> Accessibility.");
+                loop {
+                    let keys = device_state.get_keys();
+                    let mouse = device_state.get_mouse();
+                    let mut active = Vec::new();
+                    
+                    // Convert pressed keys to strings
+                    for k in keys {
+                        active.push(format!("{:?}", k));
+                    }
+                    
+                    // Add mouse clicks (Index 1 is Left Click, Index 2 is Right Click)
+                    if mouse.button_pressed.get(1).copied().unwrap_or(false) {
+                        active.push("LMB".to_string());
+                    }
+                    if mouse.button_pressed.get(2).copied().unwrap_or(false) {
+                        active.push("RMB".to_string());
+                    }
+
+                    // Only emit to React if the held keys changed
+                    let current_state = active.join(",");
+                    if current_state != last_state {
+                        let _ = handle.emit("ghostkey-state", &active);
+                        last_state = current_state;
+                    }
+
+                    // Poll at 100hz (very fast, practically zero CPU usage)
+                    thread::sleep(Duration::from_millis(10));
                 }
             });
 
