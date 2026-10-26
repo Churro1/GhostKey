@@ -1,0 +1,38 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      - name: Build and Draft Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'GhostKey v__VERSION__'
+          releaseBody: |
+            Minimal, ultra-lightweight macOS input overlay.
+            
+            **macOS Installation:**
+            1. Download and mount the `.dmg` below, then drag GhostKey to your Applications folder.
+            2. Because this is an unsigned app, macOS Gatekeeper will block the first launch. Open your **Applications** folder, **Right-Click** (or Control-click) GhostKey, and select **Open**.
+            3. Grant GhostKey permissions in **System Settings → Privacy & Security → Accessibility**.
+          releaseDraft: true
