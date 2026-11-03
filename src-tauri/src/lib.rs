@@ -1,7 +1,7 @@
 use device_query::{DeviceQuery, DeviceState};
 use std::thread;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 pub fn run() {
     tauri::Builder::default()
